@@ -86,12 +86,12 @@ podman run --rm -e H3_PORT=8888 -p 8888:8888/udp ghcr.io/machine-moon/mod_http3:
 
 ## Change the configuration
 
-The baked configuration is [`container/httpd.conf`](https://github.com/machine-moon/mod_http3/blob/trunk/container/httpd.conf).
+The baked configuration is [`container/httpd-linux.conf`](https://github.com/machine-moon/mod_http3/blob/trunk/container/httpd-linux.conf).
 Copy it, edit it, mount it back:
 
 ```sh
 podman run --rm -p 8443:8443/udp \
-    -v ./httpd.conf:/src/dependencies/httpd-dist/conf/httpd.conf:ro \
+    -v ./httpd-linux.conf:/src/dependencies/httpd-dist/conf/httpd.conf:ro \
     ghcr.io/machine-moon/mod_http3:latest
 ```
 

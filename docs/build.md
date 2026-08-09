@@ -28,6 +28,32 @@ the `WITH_*` options only if they meet these minimums.
 
 Distribution-provided httpd packages usually have an older MMN and are rejected. Use the default source build or provide compatible custom prefixes.
 
+APR-util needs expat and httpd needs PCRE2. Neither is a submodule, because
+neither is a dependency of mod_http3: they belong to the server stack, and both
+are located with `find_package`, so they come from wherever the platform keeps
+its packages.
+
+| Platform | Where they come from |
+| --- | --- |
+| Debian, Ubuntu | `apt install libexpat1-dev libpcre2-dev` |
+| Fedora, RHEL | `dnf install expat-devel pcre2-devel` |
+| Windows | `vcpkg install expat:x64-windows pcre2:x64-windows` |
+
+## Windows
+
+Windows builds with MSVC, which is what APR, APR-util and httpd write their own
+Windows CMake builds for. Using it is what keeps `dependencies/` unpatched, so
+there is no cross-compiler path from Linux: build it on Windows, or let the
+`windows` CI job do it. Configure with vcpkg's toolchain file so the sub-builds
+resolve the packages above:
+
+```sh
+cmake -B build -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake" \
+  -DVCPKG_TARGET_TRIPLET=x64-windows
+cmake --build build
+```
+
 ## Custom Prefixes
 
 ```sh
