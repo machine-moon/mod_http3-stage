@@ -28,8 +28,6 @@
 #include <apr_thread_pool.h>
 #include <apr_thread_proc.h>
 
-#include <errno.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -184,7 +182,7 @@ void wait_for_event(h3_io_t* io)
 
     struct pollfd pfds[2] = {{.fd = io->udp_fd, .events = 0}, {.fd = -1, .events = POLLIN}};
     h3_nfds_t npfds = 1;
-    if (io->wakeup.reader_fd >= 0)
+    if (io->wakeup.reader)
     {
         pfds[1].fd = io->wakeup.reader_fd;
         npfds = 2;
@@ -203,7 +201,8 @@ void wait_for_event(h3_io_t* io)
         pfds[0].events = POLLIN; /* force POLLIN to avoid missing UDP packets */
     }
 
-    if (h3_poll(pfds, npfds, timeout_ms) < 0 && errno == EINTR)
+    /* revents is undefined after a failure, and WSAPoll ignores errno. */
+    if (h3_poll(pfds, npfds, timeout_ms) < 0)
     {
         return;
     }
