@@ -16,9 +16,19 @@
  * limitations under the License.
  */
 
+#include "h3_hooks.h"
+#include "h3.h"
+#include "h3_check.h"
 #include "h3_config.h"
-#include <httpd.h>
-
+#include "h3_filter.h"
+#include "h3_io.h"
+#include "h3_os.h"
+#include "h3_session.h"
+#include "mod_http3.h"
+#include <apr_atomic.h>
+#include <apr_pools.h>
+#include <apr_strings.h>
+#include <apr_tables.h>
 #include <http_config.h>
 #include <http_connection.h>
 #include <http_core.h>
@@ -27,19 +37,7 @@
 #include <http_request.h>
 #include <http_ssl.h>
 #include <http_vhost.h>
-
-#include <apr_atomic.h>
-#include <apr_pools.h>
-#include <apr_strings.h>
-#include <apr_tables.h>
-
-#include "h3.h"
-#include "h3_check.h"
-#include "h3_filter.h"
-#include "h3_hooks.h"
-#include "h3_io.h"
-#include "h3_session.h"
-#include "mod_http3.h"
+#include <httpd.h>
 
 const char* h3_hook_http_scheme(const request_rec* r)
 {
@@ -104,7 +102,7 @@ int h3_hook_post_read_request(request_rec* r)
     return OK;
 }
 
-void h3_hook_pre_read_request(request_rec* /*r*/, conn_rec* /*c*/)
+void h3_hook_pre_read_request(request_rec* r H3_UNUSED, conn_rec* c H3_UNUSED)
 {
 }
 
