@@ -24,3 +24,4 @@ macro(require_initialized_submodule DIR)
                         "    git -C ${DIR} submodule update --init .\n")
   endif()
 endmacro()
+

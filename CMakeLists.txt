@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.26)
 
-project(mod_http3 VERSION 0.0.50)
+project(mod_http3 VERSION 0.0.51)
 
 # -- Compiler and Build Type Checks --
 if(NOT CMAKE_C_COMPILER_ID MATCHES "^(GNU|MSVC)$")
@@ -81,8 +81,7 @@ if(BUILD_MODULE)
 
   set_target_properties(${PROJECT_NAME}-lib PROPERTIES PREFIX "" OUTPUT_NAME "${PROJECT_NAME}")
   if(WIN32)
-    # httpd names its modules mod_*.so on Windows too, and LoadModule takes
-    # the filename literally, so a CMake-default .dll would never be loadable.
+    # httpd loads modules by literal filename; .dll would never be found.
     set_target_properties(${PROJECT_NAME}-lib PROPERTIES SUFFIX ".so")
   endif()
   apply_target_flags(${PROJECT_NAME}-lib)

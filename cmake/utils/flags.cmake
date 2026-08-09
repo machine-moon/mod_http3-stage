@@ -6,6 +6,9 @@ function(apply_target_flags target)
     message(FATAL_ERROR "${target} is not a target, no flags can be added.")
   endif()
 
+  if(MSVC AND (ENABLE_ASAN OR ENABLE_UBSAN))
+    message(FATAL_ERROR "ENABLE_ASAN/ENABLE_UBSAN are GCC flags; not supported with MSVC.")
+  endif()
   if((ENABLE_ASAN OR ENABLE_UBSAN) AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(FATAL_ERROR "Sanitizers require Debug build type. Current build type: ${CMAKE_BUILD_TYPE}")
   endif()
@@ -32,6 +35,21 @@ function(apply_target_flags target)
     list(JOIN _sanitize_parts "," _sanitize_value)
     target_compile_options(${target} ${scope} -fsanitize=${_sanitize_value} -fno-omit-frame-pointer)
     target_link_options(${target} ${scope} -fsanitize=${_sanitize_value})
+  endif()
+
+  # -- MSVC warning flags --
+  if(MSVC)
+    set(_MSVC_WARNINGS /W3)
+    if(ENABLE_WERROR)
+      list(APPEND _MSVC_WARNINGS /WX)
+    endif()
+    target_compile_options(${target} ${scope}
+      ${_MSVC_WARNINGS}
+      /D_CRT_SECURE_NO_WARNINGS
+      /D_WINSOCK_DEPRECATED_NO_WARNINGS
+      # Conformant preprocessor, for the variadic macros in h3_check.h.
+      /Zc:preprocessor)
+    return()
   endif()
 
   # -- Compile flags --
