@@ -2,7 +2,7 @@ services:
   httpd:
     build:
       context: ..
-      dockerfile: container/Containerfile
+      dockerfile: container/Containerfile.linux
     image: apache-http3-dev:latest
     container_name: mod_http3_dev
     ports:
@@ -11,7 +11,7 @@ services:
     volumes:
       # Optionally override the default configuration and certificates by mounting your own files.
       #
-      # - ./httpd.conf:/src/dependencies/httpd-dist/conf/httpd.conf:ro
+      # - ./httpd-linux.conf:/src/dependencies/httpd-dist/conf/httpd.conf:ro
       # - ./certs:/src/dependencies/httpd-dist/conf/certs:ro
       # - ./static:/src/dependencies/httpd-dist/htdocs:ro
     healthcheck:

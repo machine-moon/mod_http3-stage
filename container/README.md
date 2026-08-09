@@ -8,24 +8,31 @@ Commands use `podman`/`podman compose`. Substitute `docker`/`docker compose` - f
 
 ```
 container/
-  Containerfile     Multi-stage build (Debian trixie).
-                    Stage 1: builds OpenSSL, APR, httpd, mod_http3.
-                    Stage 2: slim runtime image.
+  Containerfile.linux      Multi-stage build (Debian trixie).
+                           Stage 1: builds OpenSSL, APR, httpd, mod_http3.
+                           Stage 2: slim runtime image.
 
-  compose.yml       Port mapping, volume mounts, health check.
-                    Host 8443 -> container 8443 (TCP + UDP).
+  Containerfile.windows    Windows Server Core image. Compiles nothing; it
+                           packages the tree the windows build job staged.
 
-  entrypoint.sh     Mints a self-signed certificate if none is mounted,
-                    then execs httpd.
+  compose.yml              Port mapping, volume mounts, health check.
+                           Host 8443 -> container 8443 (TCP + UDP).
 
-  httpd.conf        httpd configuration. Baked into the image, and
-                    mounted over at runtime by compose.
+  entrypoint-linux.sh      Mints a self-signed certificate if none is
+                           mounted, then execs httpd.
 
-  certs/            TLS certificate and key.
-                    Generated with scripts/mkcert.sh.
+  entrypoint-windows.ps1   The same, for the Windows image.
 
-  static/           Document root (index.html). Baked into htdocs,
-                    and mounted over at runtime by compose.
+  httpd-linux.conf         httpd configuration. Baked into the image, and
+                           mounted over at runtime by compose.
+
+  httpd-windows.conf       The same, with Windows paths.
+
+  certs/                   TLS certificate and key.
+                           Generated with scripts/mkcert.sh.
+
+  static/                  Document root (index.html). Baked into htdocs,
+                           and mounted over at runtime by compose.
 ```
 
 ## Quick Start
@@ -82,7 +89,7 @@ Stop:
 podman compose down -v
 ```
 
-## httpd.conf Key Directives
+## httpd-linux.conf Key Directives
 
 ```apache
 LoadModule http3_module modules/mod_http3.so
