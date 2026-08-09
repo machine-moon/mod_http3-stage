@@ -3,9 +3,12 @@ name: build
 on:
   workflow_call:
     outputs:
-      image:
-        description: Image this build published for the commit.
-        value: ${{ jobs.module.outputs.image }}
+      linux-image:
+        description: Linux image this build published for the commit.
+        value: ${{ jobs.linux.outputs.image }}
+      windows-image:
+        description: Windows image this build published for the commit.
+        value: ${{ jobs.windows.outputs.image }}
 
 permissions:
   contents: read
@@ -15,8 +18,8 @@ env:
   IMAGE: ghcr.io/${{ github.repository }}:${{ github.sha }}
 
 jobs:
-  module:
-    name: module
+  linux:
+    name: linux
     runs-on: ubuntu-latest
     outputs:
       image: ${{ steps.ref.outputs.image }}
@@ -24,8 +27,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        with:
-          submodules: recursive
+
+      - name: Initialise submodules
+        run: |
+          git submodule update --init
+          git submodule update --init --recursive dependencies/nghttp3
 
       - name: Set up buildx
         uses: docker/setup-buildx-action@v4
@@ -42,7 +48,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: container/Containerfile
+          file: container/Containerfile.linux
           build-args: JOBS=4
           tags: ${{ env.IMAGE }}
           load: true
@@ -60,7 +66,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: container/Containerfile
+          file: container/Containerfile.linux
           build-args: JOBS=4
           target: artifacts
           outputs: type=local,dest=dist
@@ -69,10 +75,107 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: dist
+          name: dist-linux
           path: dist/
           if-no-files-found: error
 
       - name: Export image ref
         id: ref
         run: echo "image=$IMAGE" >>"$GITHUB_OUTPUT"
+
+  windows:
+    name: windows
+    runs-on: windows-latest
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Initialise submodules
+        run: |
+          git submodule update --init
+          git submodule update --init --recursive dependencies/nghttp3
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Set up NASM
+        uses: ilammy/setup-nasm@v1
+
+      - name: Set up Perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.38"
+
+      - name: Install the server stack's own dependencies
+        run: vcpkg install expat:x64-windows pcre2:x64-windows
+
+      - name: Configure
+        run: >
+          cmake -B build -G Ninja
+          "-DCMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_TARGET_TRIPLET=x64-windows
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_MODULE=ON
+          -DBUILD_EXAMPLES=OFF
+          -DBUILD_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Stage the server
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Copy-Item -Recurse -Force dependencies/httpd-dist stage
+          New-Item -ItemType Directory -Force -Path stage/modules | Out-Null
+          Copy-Item -Force build/lib/mod_http3.so stage/modules/mod_http3.so
+
+          $redist = (Get-ChildItem "$env:VCToolsRedistDir/x64" -Filter Microsoft.VC*.CRT -Directory)[0]
+          @(
+            "dependencies/apr-dist/bin"
+            "dependencies/apr-util-dist/bin"
+            "dependencies/nghttp3-dist/bin"
+            "dependencies/openssl-dist/bin"
+            "$env:VCPKG_INSTALLATION_ROOT/installed/x64-windows/bin"
+            $redist.FullName
+          ) | ForEach-Object { Get-ChildItem $_ -Filter *.dll | Copy-Item -Destination stage/bin -Force }
+
+      - name: Mint the server certificate
+        shell: bash
+        run: sh scripts/mkcert.sh stage/conf/certs
+
+      - name: Check the staged server runs
+        shell: pwsh
+        run: ./stage/bin/httpd.exe -v
+
+      - name: Log in to ghcr
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build image
+        run: docker build -f container/Containerfile.windows -t "${env:IMAGE}-windows" .
+
+      - name: Push image
+        if: github.event_name != 'pull_request'
+        run: docker push "${env:IMAGE}-windows"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-windows
+          path: stage/
+          if-no-files-found: error
+
+      - name: Export image ref
+        id: ref
+        shell: bash
+        run: echo "image=$IMAGE-windows" >>"$GITHUB_OUTPUT"
