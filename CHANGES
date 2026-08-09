@@ -3,6 +3,33 @@ mod_http3 changes
 Changes are listed most recent first.
 Security-related entries always appear at the top of their release block.
 
+v0.0.51 (2026-08-09)
+--------------------
+  *) Stopped a failed peer-address lookup leaving conn_rec::client_addr NULL.
+     apr_sockaddr_info_get clears its out-param before it can fail, so the
+     placeholder address was destroyed on the way out.
+     [Tarek Ibrahim <tareki pulsarxtech.com> <t1br4h1m gmail.com>]
+
+  *) Connected both ends of the event-thread wakeup pair and bounded its
+     drain, so only the writer can feed the reader and a flood cannot pin
+     the event thread.
+     [Tarek Ibrahim <tareki pulsarxtech.com> <t1br4h1m gmail.com>]
+
+  *) Added a Windows build with MSVC, and a CI job that publishes the staged
+     server as an artifact. APR, APR-util and httpd are built by their own
+     CMake builds, which are written for MSVC, so no dependency is patched,
+     and no submodule is added: apr-util's expat and httpd's PCRE2 come from
+     the platform, as they already did on Linux.
+     [Tarek Ibrahim <tareki pulsarxtech.com> <t1br4h1m gmail.com>]
+
+  *) Split each cmake/modules/<dep>.cmake into a dispatcher over unix/ and
+     windows/ implementations, so neither platform's build is wedged into
+     the other's file. The build workflow now carries a linux and a windows
+     job, each publishing a container, and the release carries a Windows
+     server archive alongside the Linux packages. The container files name
+     their platform on both sides rather than leaving linux implicit.
+     [Tarek Ibrahim <tareki pulsarxtech.com> <t1br4h1m gmail.com>]
+
 v0.0.50 (2026-08-09)
 --------------------
   *) Taught mpm_winnt the ap_mpm_note_extra_connection_* optional functions,
